@@ -26,6 +26,29 @@ namespace graph
 		}
 	}
 
+	void writeToFile(std::string file_path, std::string& data)
+	{
+		std::ofstream file(file_path);
+		if (file.is_open())
+		{
+			file << data;
+		}
+		file.close();
+	}
+
+	void writeToFile(std::string file_path, std::vector<std::vector<UINT>>& data)
+	{
+		std::string str;
+		for (std::vector<UINT>& a : data)
+		{
+			for (UINT& b : a) {
+				str += std::to_string(b) + ' ';
+			}
+			str += '\n';
+		}
+		writeToFile(file_path, str);
+	}
+
 	Graph::Graph()
 	{
 		matrix_	= nullptr;
@@ -65,6 +88,7 @@ namespace graph
 			}
 
 		}
+		file.close();
 
 		lengths_.clear();
 		for (auto i = 0; i != size_; i++)
@@ -74,7 +98,7 @@ namespace graph
 	}
 
 
-	std::optional<std::vector<UINT>> Graph::PassBFS(UINT begin_node, bool null_length) noexcept
+	std::optional<std::vector<UINT>> Graph::PassBFS(UINT begin_node, bool null_length, std::string path) noexcept
 	{
 		std::vector<UINT> connect_comp;
 
@@ -112,11 +136,13 @@ namespace graph
 
 		if (null_length)
 		{
-			std::cout << "\nMin length from " << begin_node << ":\n";
+			std::string str = "";
+			str += "Min length from " + std::to_string(begin_node) + ":\n";
 			for (int i = 0; i < lengths_.size(); i++)
 			{
-				std::cout << "to node " << i << ":\t" << lengths_[i] << '\n';
+				str += "to node " + std::to_string(i) + ":\t" + std::to_string(lengths_[i]) + '\n';
 			}
+			writeToFile(path, str);
 		}
 
 		if (!null_length)

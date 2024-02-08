@@ -4,6 +4,7 @@
 #include <fstream>
 #include <queue>
 #include <stack>
+#include <string>
 
 namespace graph
 {
@@ -14,7 +15,11 @@ namespace graph
 	UINT getFromBytes(char* bytes) noexcept;
 
 	// Функция печати матрицы
-	template<typename T> void printMatrix(T** matrix, UINT size_) noexcept;
+	template<typename T>
+	void printMatrix(T** matrix, UINT size_) noexcept;
+
+	void writeToFile(std::string file_path, std::string& data);
+	void writeToFile(std::string file_path, std::vector<std::vector<UINT>>& data);
 
 	class Graph
 	{
@@ -28,10 +33,12 @@ namespace graph
 
 		// Функция чтения матрицы из файла
 		void ReadFromFile(std::string file_path) noexcept;
+
 		// Фукнция поиска в ширину
-		std::optional<std::vector<UINT>> PassBFS(UINT begin_node, bool null_length = true) noexcept;
+		std::optional<std::vector<UINT>> PassBFS(UINT begin_node, bool null_length = true, std::string path = "") noexcept;
 		// Функция нахождения состава компомнент связности
 		std::vector< std::vector<UINT>> FindConnectBFS() noexcept;
+
 		// Фукнция поиска в глубину
 		void PassDFS(UINT begin_node) noexcept;
 	};
