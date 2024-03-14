@@ -1,4 +1,5 @@
 #include "graph.h"
+#include <typeinfo>
 
 namespace graph
 {
@@ -24,6 +25,14 @@ namespace graph
 			}
 			std::cout << '\n';
 		}
+	}
+
+	void graph::printUintVector(std::vector<UINT>& vec, std::string vec_name) noexcept
+	{
+		std::cout << "=== Vector " << vec_name << " ===\n";
+		for (UINT& element : vec)
+			std::cout << element << '\n';
+		std::cout << '\n';
 	}
 
 	void writeToFile(std::string file_path, std::string& data)
@@ -55,6 +64,15 @@ namespace graph
 		size_	= 0;
 	}
 
+	Graph::Graph(bool** graph, UINT size)
+	{
+		matrix_ = graph;
+		size_ = size;
+
+		for (auto i = 0; i != size_; i++)
+			lengths_.push_back(0);
+	}
+
 	Graph::~Graph()
 	{
 		for (auto i = 0; i != size_; i++)
@@ -62,6 +80,16 @@ namespace graph
 			delete[] matrix_[i];
 		}
 		delete[] matrix_;
+	}
+
+	UINT Graph::GetSize() const
+	{
+		return size_;
+	}
+
+	bool** graph::Graph::GetMatrix() const
+	{
+		return matrix_;
 	}
 
 	void Graph::ReadFromFile(std::string file_path) noexcept
@@ -97,6 +125,63 @@ namespace graph
 		printMatrix(matrix_, size_);
 	}
 
+	void Graph::ReadFromTxtFile(std::string file_path) noexcept
+	{
+		std::ifstream file(file_path);
+		std::string row;
+
+		std::getline(file, row);
+		size_ = std::stoi(row);
+
+		matrix_ = new bool* [size_];
+
+		UINT row_num = 0;
+		while (std::getline(file, row))
+		{
+			bool* matrix_row = new bool[size_]();
+
+			lengths_.clear();
+			UINT last_pos = 0;
+			for (auto i = 0; i != size_; i++)
+			{
+				lengths_.push_back(0);
+				UINT curr_pos = row.find(' ', last_pos);
+
+				if (curr_pos != -1)
+				{
+					UINT value = std::stoi(row.substr(last_pos, curr_pos - last_pos));
+
+					last_pos = curr_pos + 1;
+					matrix_row[i] = (bool)(value);
+				}
+				else
+				{
+					UINT value = std::stoi(row.substr(last_pos));
+					matrix_row[i] = (bool)(value);
+					break;
+				}
+			}
+
+			matrix_[row_num] = matrix_row;
+			row_num++;
+		}
+
+		file.close();
+	}
+
+	bool** Graph::GetReversedGraph()
+	{
+		bool** reversed_matrix_ = new bool*[size_];
+
+		for (auto i = 0; i != size_; i++)
+			reversed_matrix_[i] = new bool[size_];
+
+		for (auto i = 0; i != size_; i++)
+			for (auto j = 0; j != size_; j++)
+				reversed_matrix_[j][i] = matrix_[i][j];
+
+		return reversed_matrix_;
+	}
 
 	std::optional<std::vector<UINT>> Graph::PassBFS(UINT begin_node, bool null_length, std::string path) noexcept
 	{
@@ -188,38 +273,93 @@ namespace graph
 		return components;
 	}
 
-	void Graph::PassDFS(UINT begin_node) noexcept
+	void Graph::PassDFS(UINT begin_node, std::vector<UINT>& vec) noexcept
+	{
+		for (UINT length : lengths_)
+			length = 0;
+
+		if (lengths_[begin_node] == 0)
+		{
+			lengths_[begin_node] = 1;
+
+			for (auto i = 0; i != size_; i++)
+			{
+				if (matrix_[begin_node][i] == 1)
+				{
+					PassDFS(i, vec);
+				}
+			}
+
+			vec.push_back(begin_node);
+		}
+	}
+
+	std::vector<std::vector<UINT>> Graph::FindConnectDFS() noexcept
 	{
 		for (UINT& length : lengths_)
-		{
 			length = 0;
-		}
-		std::stack<UINT> gray_nodes;
 
-		gray_nodes.push(begin_node);
+		std::vector<std::vector<UINT>> components;
 
-		while (gray_nodes.size() != 0)
+		for (auto i = 0; i != size_; i++)
 		{
-			UINT node = gray_nodes.top();
-			gray_nodes.pop();
-
-			for (UINT i = 0; i < size_; i++)
+			if (lengths_[i] == 0)
 			{
-				if (i != begin_node)
-				{
-					if (matrix_[node][i] == 1 && lengths_[i] == 0)
-					{
-						lengths_[i] = lengths_[node] + 1;
-						gray_nodes.push(i);
-					}
-				}
+				std::vector<UINT> component;
+				PassDFS(i, component);
+				components.push_back(component);
 			}
 		}
 
-		std::cout << "\nLength from " << begin_node << ":\n";
-		for (int i = 0; i < lengths_.size(); i++)
+		return components;
+	}
+
+	std::vector<std::vector<UINT>> Graph::FindStrongConnectDFS() noexcept
+	{
+		for (UINT& length : lengths_)
+			length = 0;
+
+		std::vector<UINT> order;
+		for (auto i = 0; i != size_; i++)
 		{
-			std::cout << "to node " << i << ":\t" << lengths_[i] << '\n';
+			bool pass_i = true;
+			for (auto j = 0; j != order.size(); j++)
+			{
+				if (i == order[j])
+				{
+					pass_i = false;
+					break;
+				}
+			}
+
+			if (pass_i)
+			{
+				PassDFS(i, order);
+			}
 		}
+
+		Graph ReversedGraph(GetReversedGraph(), size_);
+
+		std::vector<std::vector<UINT>> components;
+		while(order.size() != 0)
+		{
+			std::vector<UINT> component;
+			ReversedGraph.PassDFS(order[order.size() - 1], component);
+
+			for (UINT vertex : component)
+			{
+				UINT curr_pos = order.size() - 1;
+				while (curr_pos != -1)
+				{
+					if (vertex == order[curr_pos])
+						order.erase(order.begin() + curr_pos);
+					curr_pos--;
+				}
+			}
+
+			components.push_back(component);
+		}
+
+		return components;
 	}
 }
