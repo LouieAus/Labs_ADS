@@ -64,7 +64,7 @@ namespace graph
 		size_ = 0;
 	}
 
-	Graph::Graph(UINT** graph, UINT size)
+	Graph::Graph(int** graph, UINT size)
 	{
 		matrix_ = graph;
 		size_ = size;
@@ -87,7 +87,7 @@ namespace graph
 		return size_;
 	}
 
-	UINT** graph::Graph::GetMatrix() const
+	int** graph::Graph::GetMatrix() const
 	{
 		return matrix_;
 	}
@@ -97,7 +97,7 @@ namespace graph
 		return lengths_;
 	}
 
-	void Graph::SetEdge(UINT a, UINT b, UINT weight, bool bind)
+	void Graph::SetEdge(UINT a, UINT b, int weight, bool bind)
 	{
 		matrix_[a][b] = weight;
 		if (bind)
@@ -114,10 +114,10 @@ namespace graph
 			file.read(dwBuff, 4);
 			size_ = getFromBytes(dwBuff);
 
-			matrix_ = new UINT* [size_];
+			matrix_ = new int* [size_];
 			for (auto i = 0; i < size_; i++)
 			{
-				matrix_[i] = new UINT[size_];
+				matrix_[i] = new int[size_];
 
 				char* bytes = new char[size_];
 
@@ -145,7 +145,7 @@ namespace graph
 		std::getline(file, row);
 		size_ = std::stoi(row);
 
-		matrix_ = new UINT* [size_];
+		matrix_ = new int* [size_];
 
 		lengths_.clear();
 
@@ -154,7 +154,7 @@ namespace graph
 		{
 			lengths_.push_back(0);
 
-			UINT* matrix_row = new UINT[size_]();
+			int* matrix_row = new int[size_]();
 
 			UINT last_pos = 0;
 			for (auto i = 0; i != size_; i++)
@@ -236,10 +236,10 @@ namespace graph
 		}
 		std::sort(edges.begin(), edges.end(), [](Edge a, Edge b) {return a.weight > b.weight; });
 
-		UINT** new_matrix = new UINT * [size_];
+		int** new_matrix = new int * [size_];
 		for (auto i = 0; i != size_; i++)
 		{
-			new_matrix[i] = new UINT[size_];
+			new_matrix[i] = new int[size_];
 			for (auto j = 0; j != size_; j++)
 			{
 				new_matrix[i][j] = 0;
@@ -270,17 +270,6 @@ namespace graph
 		return edges;
 	}
 
-	bool areBinded(std::vector<Edge>& edges, UINT a, UINT b)
-	{
-		for (auto& k : edges)
-		{
-			if ((k.vertexes.first == a && k.vertexes.second == b) ||
-				(k.vertexes.first == b && k.vertexes.second == a))
-				return true;
-		}
-		return false;
-	}
-
 	std::vector<Edge> Graph::PassPrima() noexcept
 	{
 		std::vector<Edge> result;
@@ -288,10 +277,10 @@ namespace graph
 		std::vector<UINT> vertexes;
 		vertexes.push_back(0);
 
-		UINT** new_matrix = new UINT * [size_];
+		int** new_matrix = new int * [size_];
 		for (auto i = 0; i != size_; i++)
 		{
-			new_matrix[i] = new UINT[size_];
+			new_matrix[i] = new int[size_];
 			for (auto j = 0; j != size_; j++)
 			{
 				new_matrix[i][j] = 0;
@@ -310,7 +299,7 @@ namespace graph
 			{
 				for (auto j = 0; j != size_; j++)
 				{
-					if (!checkBind(result_graph, i, j) /* && !areBinded(result, i, j)*/ && matrix_[i][j] != 0)
+					if (!checkBind(result_graph, i, j) && matrix_[i][j] != 0)
 					{
 						if (first)
 						{
@@ -336,5 +325,136 @@ namespace graph
 		}
 
 		return result;
+	}
+
+	bool isInVec(std::vector<UINT> vec, UINT num)
+	{
+		for (UINT in_num : vec)
+		{
+			if (num == in_num)
+				return true;
+		}
+		return false;
+	}
+
+	std::vector<UINT> Graph::PassDijkstra(UINT vertex, bool to_null, std::vector<UINT> check_vertexes) noexcept
+	{
+		if (to_null)
+		{
+			lengths_ = {};
+			for (UINT k = 0; k != size_; k++)
+				lengths_.push_back(-1);
+			lengths_[vertex] = 0;
+		}
+
+		for (UINT i = 0; i != size_; i++)
+		{
+			if (matrix_[vertex][i] != 0 && i != vertex)
+			{
+				if ((lengths_[i] == -1) || (matrix_[vertex][i] + lengths_[vertex] < lengths_[i]))
+					lengths_[i] = matrix_[vertex][i] + lengths_[vertex];
+			}
+		}
+		check_vertexes.push_back(vertex);
+
+		if (check_vertexes.size() != size_)
+		{
+			int min = -1;
+			int next_vertex = 0;
+			for (UINT j = 0; j != size_; j++)
+			{
+				if (!isInVec(check_vertexes, j))
+				{
+					if (min == -1 && lengths_[j] != -1)
+					{
+						min = lengths_[j];
+						next_vertex = j;
+					}
+					else if (lengths_[j] < min)
+					{
+						min = lengths_[j];
+						next_vertex = j;
+					}
+				}
+			}
+			PassDijkstra(next_vertex, false, check_vertexes);
+		}
+
+		return lengths_;
+	}
+
+	std::vector<Edge> Graph::matrixToEdges()
+	{
+		std::vector<Edge> edges;
+		for (auto i = 0; i != size_; i++)
+		{
+			for (auto j = 0; j != size_; j++)
+			{
+				if (matrix_[i][j] != 0)
+					edges.push_back(Edge{ std::make_pair<UINT>(i, j), matrix_[i][j] });
+			}
+		}
+		return edges;
+	}
+
+	std::optional<int> getMinDistance(std::optional<int> a, std::optional<int> b, int weight)
+	{
+		if (a.has_value() && b.has_value())
+			return (a.value() < b.value() + weight) ? (a.value()) : (b.value() + weight);
+
+		if (a.has_value() && !b.has_value())
+			return a.value();
+
+		if (!a.has_value() && b.has_value())
+			return b.value() + weight;
+
+		return std::nullopt;
+	}
+
+	std::vector<std::optional<int>> Graph::PassBelmanFord(UINT begin)
+	{
+		std::vector<Edge> edges = matrixToEdges();
+		for (auto j = 0; j != edges.size(); j++)
+			std::cout << edges[j].weight << " <= " << edges[j].vertexes.first << ", " << edges[j].vertexes.second << '\n';
+
+		std::vector<std::optional<int>> distances(size_);
+		for (auto j = 0; j != size_; j++)
+			distances[j] = std::nullopt;
+
+		distances[begin] = 0;
+
+		for (auto i = 0; i != size_ - 1; i++)
+		{
+			for (Edge& edge : edges)
+			{
+				distances[edge.vertexes.second] = getMinDistance(
+													distances[edge.vertexes.second],
+													distances[edge.vertexes.first],
+													edge.weight);
+			}
+		}
+
+		return distances;
+	}
+
+	bool Graph::checkPower()
+	{
+		for (int i = 0; i != size_; i++)
+		{
+			int vertexes = 0;
+			for (int j = 0; j != size_; j++)
+			{
+				if (matrix_[i][j] != 0)
+					vertexes++;
+			}
+			if (vertexes % 2 != 0)
+				return false;
+		}
+		return true;
+	}
+
+	std::vector<UINT> Graph::PassEuler(UINT begin)
+	{
+		
 	}
 }

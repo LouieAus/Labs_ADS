@@ -14,11 +14,14 @@ int main()
 	graph::Graph graph_1;
 	graph_1.ReadFromTxtFile("matrix.txt");
 
-	// Задание 6
-	std::vector<graph::Edge> result1 = graph_1.PassKruskal();
-	printEdges(result1);
-	std::cout << '\n';
-	// Задание 7
-	std::vector<graph::Edge> result2 = graph_1.PassPrima();
-	printEdges(result2);
+	// Задание 8
+	// std::vector<graph::UINT> res = graph_1.PassDijkstra(0);
+	// graph::printUintVector(res);
+
+	// Задание 9
+	/*std::vector<std::optional<int>> res = graph_1.PassBelmanFord(0);
+	for (std::optional<int> dist : res)
+	{
+		std::cout << dist.value() << '\n';
+	}*/
 }
